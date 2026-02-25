@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ── Screenply-specific ──────────────────────────────────────────────────
+
+# User dictionaries (per-machine, not shared)
+app/resources/user_*.json
+
+# Generated export files (always re-generated from source)
+*.pdf
+*.html
+
+# Live PDF temp file (written to system temp, but just in case)
+screenply_preview.pdf
