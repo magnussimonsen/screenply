@@ -23,5 +23,11 @@ class ScreenplyApp(App):
     spell_check_enabled: reactive[bool] = reactive(False)
     spell_language: reactive[str] = reactive(DEFAULT_LANGUAGE)
 
+    # Currently open file path (empty string = unsaved new document)
+    current_file_path: reactive[str] = reactive("")
+
+    # Live PDF — rebuild PDF automatically while the user writes
+    live_pdf_enabled: reactive[bool] = reactive(False)
+
     def on_mount(self) -> None:
         self.push_screen(MainScreen())

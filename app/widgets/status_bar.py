@@ -37,8 +37,14 @@ class AppStatusBar(Widget):
     AppStatusBar #status-spell {
         padding: 0 2;
     }
+    AppStatusBar #status-spell:hover {
+        background: $primary-lighten-1;
+    }
     AppStatusBar #status-spell.spell-errors {
         color: $error;
+    }
+    AppStatusBar #status-spell.spell-off {
+        color: $primary-lighten-3;
     }
     AppStatusBar #status-theme {
         padding: 0 2;
@@ -57,7 +63,7 @@ class AppStatusBar(Widget):
         yield Label("\u2502", classes="divider")
         yield Label(self._autosave_text, id="status-autosave")
         yield Label("\u2502", classes="divider", id="spell-divider")
-        yield Label("",                  id="status-spell")
+        yield Label("\u2717 Spell OFF", id="status-spell", classes="spell-off")
         yield Static("",                 id="status-spacer")
         yield Static(f"\U0001f3a8 {self.app.theme}", id="status-theme")
 
@@ -103,16 +109,19 @@ class AppStatusBar(Widget):
     ) -> None:
         label = self.query_one("#status-spell", Label)
         divider = self.query_one("#spell-divider", Label)
+        divider.display = True
         if not enabled:
-            label.update("")
-            divider.display = False
+            label.update("✗ Spell OFF")
             label.remove_class("spell-errors")
+            label.add_class("spell-off")
         else:
-            divider.display = True
+            label.remove_class("spell-off")
             if error_count == 0:
-                label.update("\u2713 Spelling OK")
+                label.update("✓ Spelling OK")
                 label.remove_class("spell-errors")
             else:
+                label.update(f"⚠ {error_count} spelling error{'s' if error_count != 1 else ''}")
+                label.add_class("spell-errors")
                 label.update(f"\u26a0 {error_count} spelling error{'s' if error_count != 1 else ''}")
                 label.add_class("spell-errors")
 
@@ -121,6 +130,13 @@ class AppStatusBar(Widget):
     # ------------------------------------------------------------------
 
     def on_click(self, event: events.Click) -> None:
+        # Toggle spell check when clicking the spell slot
+        spell_label = self.query_one("#status-spell", Label)
+        if spell_label.region.contains(event.screen_x, event.screen_y):
+            self.app.spell_check_enabled = not self.app.spell_check_enabled  # type: ignore[attr-defined]
+            return
+
+        # Open theme picker when clicking the theme label
         theme_label = self.query_one("#status-theme", Static)
         if theme_label.region.contains(event.screen_x, event.screen_y):
             from app.screens.theme_picker import ThemePickerScreen

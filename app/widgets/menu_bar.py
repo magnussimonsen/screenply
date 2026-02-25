@@ -24,6 +24,9 @@ FILE_ITEMS = [
     ("Save Script",     "file-save"),
     ("Save Script As…", "file-save-as"),
     None,
+    ("Export as PDF",   "file-export-pdf"),
+    ("Export as HTML",  "file-export-html"),
+    None,
     ("Quit",            "file-quit"),
 ]
 
@@ -33,9 +36,12 @@ VIEW_ITEMS = [
 ]
 
 SETTINGS_ITEMS = [
-    ("Toggle Spell Check",  "settings-spell-toggle"),
+    ("Turn On Spell Check",       "settings-spell-toggle"),
     None,
-    ("Select Language…",    "settings-language"),
+    ("Select Language…",          "settings-language"),
+    ("Add Word to Dictionary…",   "settings-add-word"),
+    None,
+    ("Turn On Live PDF",          "settings-live-pdf-toggle"),
 ]
 
 
@@ -98,7 +104,7 @@ class DropdownMenu(Widget):
                 yield Static("─" * 22, classes="sep")
             else:
                 label, item_id = item
-                yield _MenuItem(label, item_id=item_id)
+                yield _MenuItem(label, item_id=item_id, id=item_id)
 
     def show(self) -> None:
         self.styles.offset = (self._col, 1)
