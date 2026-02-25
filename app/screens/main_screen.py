@@ -19,6 +19,12 @@ from app.state.settings import SUPPORTED_LANGUAGES  # noqa: F401 (reserved for f
 class MainScreen(Screen):
     """The primary screen of the application."""
 
+    BINDINGS = [
+        ("ctrl+n", "new_file",  "New"),
+        ("ctrl+o", "open_file", "Open"),
+        ("ctrl+s", "save_file", "Save"),
+    ]
+
     def compose(self) -> ComposeResult:
         yield AppMenuBar()
         with Horizontal(id="main-content"):
@@ -36,13 +42,13 @@ class MainScreen(Screen):
     def on_mount(self) -> None:
         """Register watchers on app-level reactives after DOM is ready."""
         self.watch(self.app, "spell_check_enabled", self._on_spell_enabled_changed, init=False)
-        self.watch(self.app, "live_pdf_enabled",    self._on_live_pdf_changed,      init=False)
+        self.watch(self.app, "live_preview_enabled", self._on_live_preview_changed,  init=False)
 
     def _on_spell_enabled_changed(self, enabled: bool) -> None:
         self._update_spell_label()
 
-    def _on_live_pdf_changed(self, enabled: bool) -> None:
-        self._update_live_pdf_label()
+    def _on_live_preview_changed(self, enabled: bool) -> None:
+        self._update_live_preview_label()
 
     def _close_all(self) -> None:
         for dd in self.query(DropdownMenu):
@@ -55,7 +61,7 @@ class MainScreen(Screen):
         if not currently_visible:
             if event.menu_id == "settings":
                 self._update_spell_label()
-                self._update_live_pdf_label()   # refresh before showing
+                self._update_live_preview_label()   # refresh before showing
             dd.show()
 
     # ------------------------------------------------------------------
@@ -70,13 +76,15 @@ class MainScreen(Screen):
         match item_id:
             # File
             case "file-new":
-                pass  # TODO
+                self._file_new()
             case "file-open":
-                pass  # TODO
+                self._file_open()
+            case "file-load-big-fish":
+                self._load_example_script()
             case "file-save":
-                pass  # TODO
+                self._file_save()
             case "file-save-as":
-                pass  # TODO
+                self._file_save_as()
             case "file-quit":
                 self.app.exit()
             # Export
@@ -102,7 +110,7 @@ class MainScreen(Screen):
                 # Delegate to the editor — it uses the word at the cursor
                 self.query_one(AppEditor).action_add_word_to_dict()
             case "settings-live-pdf-toggle":
-                self.app.live_pdf_enabled = not self.app.live_pdf_enabled  # type: ignore
+                self.app.live_preview_enabled = not self.app.live_preview_enabled  # type: ignore
 
     def _update_spell_label(self) -> None:
         """Keep the Settings dropdown label in sync with spell-check state."""
@@ -114,15 +122,122 @@ class MainScreen(Screen):
         except Exception:
             pass
 
-    def _update_live_pdf_label(self) -> None:
-        """Keep the Settings dropdown label in sync with live-PDF state."""
-        enabled = self.app.live_pdf_enabled  # type: ignore
-        label = "Turn Off Live PDF" if enabled else "Turn On Live PDF"
+    def _update_live_preview_label(self) -> None:
+        """Keep the Settings dropdown label in sync with live-preview state."""
+        enabled = self.app.live_preview_enabled  # type: ignore
+        label = "Turn Off Live HTML Preview" if enabled else "Turn On Live HTML Preview"
         try:
             item = self.query_one("#settings-live-pdf-toggle", _MenuItem)
             item.update(label)
         except Exception:
             pass
+
+    def _load_example_script(self) -> None:
+        import os
+        from textual.widgets import TextArea
+        path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "example_script", "Big-Fish.fountain"
+        )
+        path = os.path.normpath(path)
+        try:
+            text = open(path, encoding="utf-8").read()
+            self.query_one("#screenplay-textarea", TextArea).load_text(text)
+            self.app.current_file_path = path  # type: ignore
+            self._flash("Loaded: Big Fish")
+            self.call_after_refresh(lambda p=path: self.query_one(AppStatusBar).set_file(p, saved=True))
+        except Exception as exc:
+            self._flash(f"Could not load Big Fish: {exc}", error=True)
+
+    # ------------------------------------------------------------------
+    # File operations
+    # ------------------------------------------------------------------
+
+    def _file_new(self) -> None:
+        from textual.widgets import TextArea
+        self.query_one("#screenplay-textarea", TextArea).load_text("")
+        self.app.current_file_path = ""  # type: ignore
+        self.call_after_refresh(lambda: self.query_one(AppStatusBar).set_file("", saved=True))
+
+    def _file_open(self) -> None:
+        import os
+        from textual.widgets import TextArea
+        current: str = self.app.current_file_path  # type: ignore
+        initial = current if current else os.getcwd()
+
+        def _dialog() -> None:
+            from app.utils.dialogs import ask_open_path
+            path = ask_open_path(initial)
+            if not path:
+                return
+            try:
+                text = open(path, encoding="utf-8").read()
+                def _apply() -> None:
+                    self.query_one("#screenplay-textarea", TextArea).load_text(text)
+                    self.app.current_file_path = path  # type: ignore
+                    self._flash(f"Opened: {os.path.basename(path)}")
+                    self.call_after_refresh(lambda p=path: self.query_one(AppStatusBar).set_file(p, saved=True))
+                self.app.call_from_thread(_apply)
+            except Exception as exc:
+                self.app.call_from_thread(
+                    self._flash, f"Could not open file: {exc}", True
+                )
+        self.run_worker(_dialog, thread=True, name="open-dialog")
+
+    def _file_save(self) -> None:
+        current: str = self.app.current_file_path  # type: ignore
+        if current:
+            self._write_file(current)
+        else:
+            self._file_save_as()
+
+    def _file_save_as(self) -> None:
+        import os
+        current: str = self.app.current_file_path  # type: ignore
+        initial = current if current else os.path.join(os.getcwd(), "script.fountain")
+
+        def _dialog() -> None:
+            from app.utils.dialogs import ask_save_as_path
+            path = ask_save_as_path(initial)
+            if not path:
+                return
+            if not os.path.splitext(path)[1]:
+                path += ".fountain"
+            self.app.call_from_thread(self._write_file, path)
+        self.run_worker(_dialog, thread=True, name="save-as-dialog")
+
+    def _write_file(self, path: str) -> None:
+        import os
+        text = self.query_one("#screenplay-textarea").text  # type: ignore[attr-defined]
+        try:
+            os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            self.app.current_file_path = path  # type: ignore
+            self.query_one(AppStatusBar).set_file(path, saved=True)
+            self._flash(f"Saved: {os.path.basename(path)}")
+        except Exception as exc:
+            self._flash(f"Could not save: {exc}", error=True)
+
+    # ------------------------------------------------------------------
+    # Track unsaved changes
+    # ------------------------------------------------------------------
+
+    def on_text_area_changed(self, event) -> None:  # type: ignore[override]
+        self.query_one(AppStatusBar).is_saved = False
+
+    # ------------------------------------------------------------------
+    # Keyboard action handlers (bound in app.py)
+    # ------------------------------------------------------------------
+
+    def action_new_file(self) -> None:
+        self._file_new()
+
+    def action_open_file(self) -> None:
+        self._file_open()
+
+    def action_save_file(self) -> None:
+        self._file_save()
 
     def _export(self, ext: str) -> None:
         """Export the current editor text to PDF or HTML and open it."""
@@ -136,9 +251,9 @@ class MainScreen(Screen):
             else:
                 fountain_to_html(text, out_path)
             os.startfile(out_path)
-            self.app.notify(f"Exported: {os.path.basename(out_path)}", timeout=3)
+            self._flash(f"Exported: {os.path.basename(out_path)}")
         except Exception as exc:
-            self.app.notify(f"Export failed: {exc}", severity="error", timeout=5)
+            self._flash(f"Export failed: {exc}", error=True)
 
     # ------------------------------------------------------------------
     # Spell check results -> status bar
@@ -149,3 +264,20 @@ class MainScreen(Screen):
     ) -> None:
         status = self.query_one(AppStatusBar)
         status.update_spell_status(event.enabled, event.error_count)
+
+    def on_app_editor_notification(
+        self, event: AppEditor.Notification
+    ) -> None:
+        """Route editor notifications (e.g. live PDF updates) to status bar."""
+        self._flash(event.text, error=event.error)
+
+    # ------------------------------------------------------------------
+    # Inline notification helper
+    # ------------------------------------------------------------------
+
+    def _flash(self, text: str, error: bool = False) -> None:
+        """Show *text* in the status bar notice slot."""
+        try:
+            self.query_one(AppStatusBar).flash_message(text, error=error)
+        except Exception:
+            pass  # status bar not yet mounted (e.g. during tests)

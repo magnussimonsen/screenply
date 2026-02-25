@@ -47,18 +47,30 @@ class AppEditor(Widget):
             self.error_count = error_count
             self.enabled = enabled
 
+    class Notification(Message):
+        """Carries a status-bar message from background work."""
+        def __init__(self, text: str, error: bool = False) -> None:
+            super().__init__()
+            self.text = text
+            self.error = error
+
     DEFAULT_CSS = """
     AppEditor {
         width: 1fr;
         height: 100%;
-        background: $surface;
+        /* Desk — slightly darker than the page */
+        background: $background;
         padding: 0;
+        align: center top;
     }
     AppEditor TextArea {
-        width: 100%;
+        /* Page — 72 chars wide:  8 left-margin + 60 content + 4 right-margin */
+        width: 72;
         height: 100%;
         background: $surface;
         border: none;
+        /* Left indent mimics the 1.5" screenplay margin */
+        padding: 1 4 1 8;
     }
     """
 
@@ -73,12 +85,17 @@ class AppEditor(Widget):
         ta = self.query_one("#screenplay-textarea", TextArea)
         ta.register_theme(_SPELL_THEME)
         ta.theme = "screenply"
+        # Watch app-level reactives the correct way (self.watch, not watch_app_*)
+        self.watch(self.app, "live_preview_enabled", self._on_live_preview_toggled, init=False)
+        self.watch(self.app, "spell_check_enabled",  self._run_spell_check,         init=False)
+        self.watch(self.app, "spell_language",       self._run_spell_check,         init=False)
+
 
     # ------------------------------------------------------------------
     # Spell checking — public entry point
     # ------------------------------------------------------------------
 
-    def _run_spell_check(self) -> None:
+    def _run_spell_check(self, _=None) -> None:
         enabled: bool = self.app.spell_check_enabled  # type: ignore[attr-defined]
         if not enabled:
             self._apply_spell_highlights({}, 0, enabled=False)
@@ -202,46 +219,47 @@ class AppEditor(Widget):
     def on_text_area_changed(self, event: TextArea.Changed) -> None:
         """Debounce: re-check 600 ms after user stops typing."""
         self.set_timer(0.6, self._run_spell_check, name="spell-debounce")
-        if self.app.live_pdf_enabled:  # type: ignore[attr-defined]
-            self.set_timer(3.0, self._do_live_pdf, name="live-pdf-debounce")
+        if self.app.live_preview_enabled:  # type: ignore[attr-defined]
+            self.set_timer(1.5, self._do_live_preview, name="live-preview-debounce")
 
-    def watch_app_spell_check_enabled(self, _: bool) -> None:
-        self._run_spell_check()
-
-    def watch_app_spell_language(self, _: str) -> None:
-        self._run_spell_check()
-
-    def watch_app_live_pdf_enabled(self, enabled: bool) -> None:
+    def _on_live_preview_toggled(self, enabled: bool) -> None:
         if enabled:
-            self._do_live_pdf()   # build once immediately when turned on
+            self._do_live_preview(open_browser=True)
 
     # ------------------------------------------------------------------
-    # Live PDF
+    # Live HTML preview
     # ------------------------------------------------------------------
 
-    def _do_live_pdf(self) -> None:
-        """Build PDF in background and write to the preview/export path."""
-        if not self.app.live_pdf_enabled:  # type: ignore[attr-defined]
+    def _do_live_preview(self, open_browser: bool = False) -> None:
+        """Build HTML preview in background; optionally open browser."""
+        if not self.app.live_preview_enabled:  # type: ignore[attr-defined]
             return
         text = self.query_one("#screenplay-textarea", TextArea).text
         current_path: str = self.app.current_file_path  # type: ignore[attr-defined]
         self.run_worker(
-            lambda: self._build_pdf(text, current_path),
+            lambda: self._build_html_preview(text, current_path, open_browser),
             thread=True,
-            name="live-pdf",
+            name="live-preview",
             exclusive=True,
         )
 
-    def _build_pdf(self, text: str, current_path: str) -> None:
-        from app.utils.export import fountain_to_pdf, get_export_path
-        out_path = get_export_path(current_path, ".pdf")
+    def _build_html_preview(self, text: str, current_path: str, open_browser: bool) -> None:
+        from app.utils.export import fountain_to_html_live, get_export_path
+        out_path = get_export_path(current_path, ".preview.html")
         try:
-            fountain_to_pdf(text, out_path)
-            self.app.call_from_thread(self._on_pdf_written, out_path)
+            fountain_to_html_live(text, out_path)
+            if open_browser:
+                # webbrowser.open must run on the main thread
+                url = "file:///" + out_path.replace("\\", "/")
+                self.app.call_from_thread(self._open_browser, url)
+            self.app.call_from_thread(
+                self.post_message, self.Notification("\u2713 Preview updated")
+            )
         except Exception as exc:
             self.app.call_from_thread(
-                self.app.notify, f"Live PDF error: {exc}", severity="error", timeout=4
+                self.post_message, self.Notification(f"Preview error: {exc}", error=True)
             )
 
-    def _on_pdf_written(self, out_path: str) -> None:
-        self.app.notify(f"✓ PDF updated", timeout=2)
+    def _open_browser(self, url: str) -> None:
+        import webbrowser
+        webbrowser.open(url)

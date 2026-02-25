@@ -54,6 +54,14 @@ class AppStatusBar(Widget):
         background: $primary-lighten-1;
         color: $foreground;
     }
+    AppStatusBar #status-notice {
+        width: auto;
+        padding: 0 2;
+        color: $foreground;
+    }
+    AppStatusBar #status-notice.notice-error {
+        color: $error;
+    }
     """
 
     def compose(self) -> ComposeResult:
@@ -65,6 +73,7 @@ class AppStatusBar(Widget):
         yield Label("\u2502", classes="divider", id="spell-divider")
         yield Label("\u2717 Spell OFF", id="status-spell", classes="spell-off")
         yield Static("",                 id="status-spacer")
+        yield Static("",                 id="status-notice")
         yield Static(f"\U0001f3a8 {self.app.theme}", id="status-theme")
 
     # ------------------------------------------------------------------
@@ -99,6 +108,35 @@ class AppStatusBar(Widget):
         self.query_one("#status-autosave", Label).update(
             "Autosave: ON" if value else "Autosave: OFF"
         )
+
+    # ------------------------------------------------------------------
+    # File status (called by MainScreen on open/save/new)
+    # ------------------------------------------------------------------
+
+    def set_file(self, path: str, saved: bool = True) -> None:
+        """Update filename and saved state from a file path."""
+        import os
+        self.filename = os.path.basename(path) if path else "Untitled"
+        self.is_saved = saved
+
+    # ------------------------------------------------------------------
+    # Inline notifications (replaces toast pop-ups)
+    # ------------------------------------------------------------------
+
+    def flash_message(self, text: str, error: bool = False) -> None:
+        """Show *text* in the notice slot; auto-clears after 4 seconds."""
+        notice = self.query_one("#status-notice", Static)
+        notice.update(text)
+        if error:
+            notice.add_class("notice-error")
+        else:
+            notice.remove_class("notice-error")
+        self.set_timer(4.0, lambda: self._clear_notice(), name="notice-clear")
+
+    def _clear_notice(self) -> None:
+        notice = self.query_one("#status-notice", Static)
+        notice.update("")
+        notice.remove_class("notice-error")
 
     # ------------------------------------------------------------------
     # Spell check status (called by MainScreen)

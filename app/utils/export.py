@@ -48,3 +48,29 @@ def fountain_to_html(text: str, out_path: str) -> None:
     screenplay = parse(StringIO(text))
     with open(out_path, "w", encoding="utf-8") as fh:
         convert_full(screenplay, fh, css_file=default_css)
+
+
+def fountain_to_html_live(text: str, out_path: str, refresh_secs: int = 2) -> None:
+    """
+    Like *fountain_to_html* but injects an auto-refresh meta tag so the
+    browser tab re-loads every *refresh_secs* seconds.
+    """
+    import tempfile
+    import os
+
+    # Write to a temp file first, then inject the meta tag
+    tmp = out_path + ".tmp"
+    fountain_to_html(text, tmp)
+    with open(tmp, encoding="utf-8") as fh:
+        html = fh.read()
+    os.remove(tmp)
+
+    meta = f'<meta http-equiv="refresh" content="{refresh_secs}">'
+    # Inject after <head> if present, otherwise prepend
+    if "<head>" in html:
+        html = html.replace("<head>", f"<head>\n  {meta}", 1)
+    else:
+        html = meta + "\n" + html
+
+    with open(out_path, "w", encoding="utf-8") as fh:
+        fh.write(html)

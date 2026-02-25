@@ -26,8 +26,8 @@ class ScreenplyApp(App):
     # Currently open file path (empty string = unsaved new document)
     current_file_path: reactive[str] = reactive("")
 
-    # Live PDF — rebuild PDF automatically while the user writes
-    live_pdf_enabled: reactive[bool] = reactive(False)
+    # Live preview — rebuild HTML automatically while the user writes
+    live_preview_enabled: reactive[bool] = reactive(False)
 
     def on_mount(self) -> None:
         self.push_screen(MainScreen())

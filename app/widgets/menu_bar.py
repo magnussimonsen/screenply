@@ -20,6 +20,7 @@ from textual import events
 FILE_ITEMS = [
     ("New Script",      "file-new"),
     ("Open Script…",    "file-open"),
+    ("Load Big Fish",   "file-load-big-fish"),
     None,
     ("Save Script",     "file-save"),
     ("Save Script As…", "file-save-as"),
@@ -41,7 +42,7 @@ SETTINGS_ITEMS = [
     ("Select Language…",          "settings-language"),
     ("Add Word to Dictionary…",   "settings-add-word"),
     None,
-    ("Turn On Live PDF",          "settings-live-pdf-toggle"),
+    ("Turn On Live HTML Preview",  "settings-live-pdf-toggle"),
 ]
 
 
