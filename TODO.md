@@ -1,12 +1,14 @@
 # Screenply — TODO & Session Context
 
 ## How to run
+
 ```powershell
 .venv\Scripts\activate
 python main.py
 ```
 
 ## Tech stack
+
 - **Python 3.10+** / `.venv/`
 - **Textual 8.0.0** — TUI framework
 - **pyspellchecker 0.8.4** — spell checking
@@ -19,6 +21,7 @@ python main.py
 ## ✅ Completed features
 
 ### Core app
+
 - [x] Virtual environment setup (`makevenv.py`)
 - [x] Full app scaffold — menu bar, sidebar, editor, status bar
 - [x] File / View / Settings dropdown menus
@@ -26,6 +29,7 @@ python main.py
 - [x] Page-on-desk layout — 72-char centered "paper" column in editor
 
 ### File operations
+
 - [x] New Script (Ctrl+N)
 - [x] Open Script (Ctrl+O) — native Windows file picker via tkinter
 - [x] Save Script (Ctrl+S) — saves in-place, falls through to Save As if unsaved
@@ -36,7 +40,8 @@ python main.py
 - [x] Status bar tracks filename + Saved/Unsaved state
 
 ### Spell checking
-- [x] Visual red-underline highlights on misspelled words (TextArea _highlights)
+
+- [x] Visual red-underline highlights on misspelled words (TextArea \_highlights)
 - [x] Background worker + 600 ms debounce
 - [x] Norwegian dictionary (LibreOffice source, 333,669 words) at `app/resources/no.json.gz`
 - [x] 13 supported languages (Settings → Select Language…)
@@ -45,6 +50,7 @@ python main.py
   - Per-language, saved to `app/resources/user_<lang>.json`
 
 ### Live HTML preview
+
 - [x] Settings → Turn On Live HTML Preview
   - Opens default browser automatically on first toggle
   - Writes `<filename>.preview.html` next to the open script
@@ -53,11 +59,13 @@ python main.py
   - Status bar shows "✓ Preview updated" after each rebuild
 
 ### Notifications
+
 - [x] All notifications shown inline in status bar (no pop-ups)
   - Normal messages in foreground colour, errors in `$error` (red)
   - Auto-clears after 4 seconds
 
 ### Dictionary tooling
+
 - [x] `scripts/download_dict.py` — converts any LibreOffice Hunspell .dic to pyspellchecker format
 
 ---
@@ -65,6 +73,7 @@ python main.py
 ## ⬜ Todo — next session
 
 ### High priority
+
 - [ ] **Sidebar Table of Contents** — parse `INT./EXT.` scene headings from editor text,
       populate `AppSidebar` with clickable scene list.
       Hook: watch `TextArea.Changed`, extract headings with regex,
@@ -79,6 +88,7 @@ python main.py
       Fountain template (Title, Author, first scene heading) instead of blank editor.
 
 ### Medium priority
+
 - [ ] **Paper View screen** — a read-only `ModalScreen` or pushed `Screen` that renders
       the Fountain text as formatted screenplay using `screenplain`'s AST:
       scene headings in caps, action, character centred, dialogue indented.
@@ -94,6 +104,7 @@ python main.py
       a manual regex highlighter similar to the spell-check highlight mechanism.
 
 ### Low priority / Nice to have
+
 - [ ] **"Unsaved changes" confirmation on New/Open** — before wiping the editor,
       check `AppStatusBar.is_saved`; if False, show a confirm modal
       (`ModalScreen` with "Save / Discard / Cancel" buttons).
@@ -145,6 +156,7 @@ scripts/download_dict.py         Convert LibreOffice .dic → pyspellchecker .js
 ```
 
 ## Known patterns / gotchas
+
 - **Cross-widget reactive watching**: always use `self.watch(self.app, "attr", cb, init=False)`
   in `on_mount` — NOT `watch_app_<attr>` naming convention (doesn't work for non-App widgets).
 - **Background workers**: use `self.run_worker(fn, thread=True)`.
