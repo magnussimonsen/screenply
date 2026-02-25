@@ -1,0 +1,13 @@
+/* app/app.tcss — Global layout styles for Screenply */
+
+Screen {
+    layout: vertical;
+    layers: base overlay;
+}
+
+/* The horizontal band that holds Sidebar + Editor */
+#main-content {
+    layout: horizontal;
+    height: 1fr;
+}
+
