@@ -21,6 +21,7 @@ FILE_ITEMS = [
     ("New Script",      "file-new"),
     ("Open Script…",    "file-open"),
     ("Load Big Fish",   "file-load-big-fish"),
+    ("Load Template",   "file-load-template"),
     None,
     ("Save Script",     "file-save"),
     ("Save Script As…", "file-save-as"),
@@ -43,6 +44,9 @@ SETTINGS_ITEMS = [
     ("Add Word to Dictionary…",   "settings-add-word"),
     None,
     ("Turn On Live HTML Preview",  "settings-live-pdf-toggle"),
+    None,
+    ("Set Paper Width…",           "settings-paper-width"),
+    ("Set Sidebar Width…",         "settings-sidebar-width"),
 ]
 
 

@@ -33,6 +33,12 @@ _WORD_RE = re.compile(
     r"[A-Za-z'\u00C0-\u024F\u00E6\u00F8\u00E5\u00C6\u00D8\u00C5]+"
 )
 
+# Fountain scene headings: lines starting with INT/EXT/etc. or forced with '.'
+_SCENE_RE = re.compile(
+    r"^(?:INT\.?/EXT\.?|I/E\.?|INT\.?|EXT\.?|\.)[ \t]+.+",
+    re.IGNORECASE,
+)
+
 
 class AppEditor(Widget):
     """The main screenplay editing area."""
@@ -53,6 +59,12 @@ class AppEditor(Widget):
             super().__init__()
             self.text = text
             self.error = error
+
+    class TocUpdated(Message):
+        """Fired whenever the scene-heading list changes."""
+        def __init__(self, scenes: list[tuple[int, str]]) -> None:
+            super().__init__()
+            self.scenes = scenes  # [(line_number, heading_text), ...]
 
     DEFAULT_CSS = """
     AppEditor {
@@ -89,7 +101,33 @@ class AppEditor(Widget):
         self.watch(self.app, "live_preview_enabled", self._on_live_preview_toggled, init=False)
         self.watch(self.app, "spell_check_enabled",  self._run_spell_check,         init=False)
         self.watch(self.app, "spell_language",       self._run_spell_check,         init=False)
+        self.watch(self.app, "paper_width",          self._on_paper_width_changed,  init=True)
+        self.watch(self.app, "view_mode",            self._on_view_mode_changed,    init=False)
 
+
+    # ------------------------------------------------------------------
+    # Paper width
+    # ------------------------------------------------------------------
+
+    def _on_paper_width_changed(self, width: int) -> None:
+        """Update the TextArea column width when the paper_width setting changes."""
+        if self.app.view_mode == "paper":  # type: ignore
+            try:
+                ta = self.query_one("#screenplay-textarea", TextArea)
+                ta.styles.width = width
+            except Exception:
+                pass
+
+    def _on_view_mode_changed(self, mode: str) -> None:
+        """Switch between full-width web view and fixed-width paper view."""
+        try:
+            ta = self.query_one("#screenplay-textarea", TextArea)
+            if mode == "web":
+                ta.styles.width = "1fr"
+            else:  # paper
+                ta.styles.width = self.app.paper_width  # type: ignore
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Spell checking — public entry point
@@ -219,8 +257,21 @@ class AppEditor(Widget):
     def on_text_area_changed(self, event: TextArea.Changed) -> None:
         """Debounce: re-check 600 ms after user stops typing."""
         self.set_timer(0.6, self._run_spell_check, name="spell-debounce")
+        self.set_timer(0.4, self._scan_toc, name="toc-debounce")
         if self.app.live_preview_enabled:  # type: ignore[attr-defined]
             self.set_timer(1.5, self._do_live_preview, name="live-preview-debounce")
+
+    def _scan_toc(self) -> None:
+        """Scan the text for Fountain scene headings and broadcast TocUpdated."""
+        text = self.query_one("#screenplay-textarea", TextArea).text
+        scenes: list[tuple[int, str]] = []
+        for line_no, line in enumerate(text.splitlines()):
+            stripped = line.strip()
+            if _SCENE_RE.match(stripped):
+                # Remove forced-slug dot prefix for display
+                label = stripped.lstrip(". \t") if stripped.startswith(".") else stripped
+                scenes.append((line_no, label))
+        self.post_message(self.TocUpdated(scenes))
 
     def _on_live_preview_toggled(self, enabled: bool) -> None:
         if enabled:

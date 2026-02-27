@@ -11,7 +11,7 @@ from app.widgets.menu_bar import (
     FILE_ITEMS, VIEW_ITEMS, SETTINGS_ITEMS,
 )
 from app.widgets.status_bar import AppStatusBar
-from app.widgets.sidebar import AppSidebar
+from app.widgets.sidebar import AppSidebar, _TocEntry
 from app.widgets.editor import AppEditor
 from app.state.settings import SUPPORTED_LANGUAGES  # noqa: F401 (reserved for future use)
 
@@ -81,6 +81,8 @@ class MainScreen(Screen):
                 self._file_open()
             case "file-load-big-fish":
                 self._load_example_script()
+            case "file-load-template":
+                self._load_template()
             case "file-save":
                 self._file_save()
             case "file-save-as":
@@ -94,9 +96,9 @@ class MainScreen(Screen):
                 self._export(ext=".html")
             # View
             case "view-web":
-                pass  # TODO
+                self.app.view_mode = "web"  # type: ignore
             case "view-paper":
-                pass  # TODO
+                self.app.view_mode = "paper"  # type: ignore
             # Settings
             case "settings-spell-toggle":
                 self.app.spell_check_enabled = not self.app.spell_check_enabled  # type: ignore
@@ -111,6 +113,26 @@ class MainScreen(Screen):
                 self.query_one(AppEditor).action_add_word_to_dict()
             case "settings-live-pdf-toggle":
                 self.app.live_preview_enabled = not self.app.live_preview_enabled  # type: ignore
+            case "settings-paper-width":
+                from app.screens.paper_width_screen import PaperWidthScreen
+                current = self.app.paper_width  # type: ignore
+                def apply_width(width: int | None) -> None:
+                    if width is not None:
+                        self.app.paper_width = width  # type: ignore
+                self.app.push_screen(
+                    PaperWidthScreen(current, title="Set Paper Width", min_width=40, max_width=200),
+                    apply_width,
+                )
+            case "settings-sidebar-width":
+                from app.screens.paper_width_screen import PaperWidthScreen
+                current = self.app.sidebar_width  # type: ignore
+                def apply_sidebar_width(width: int | None) -> None:
+                    if width is not None:
+                        self.app.sidebar_width = width  # type: ignore
+                self.app.push_screen(
+                    PaperWidthScreen(current, title="Set Sidebar Width", min_width=10, max_width=60),
+                    apply_sidebar_width,
+                )
 
     def _update_spell_label(self) -> None:
         """Keep the Settings dropdown label in sync with spell-check state."""
@@ -148,6 +170,23 @@ class MainScreen(Screen):
             self.call_after_refresh(lambda p=path: self.query_one(AppStatusBar).set_file(p, saved=True))
         except Exception as exc:
             self._flash(f"Could not load Big Fish: {exc}", error=True)
+
+    def _load_template(self) -> None:
+        import os
+        from textual.widgets import TextArea
+        path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "example_script", "template.fountain"
+        )
+        path = os.path.normpath(path)
+        try:
+            text = open(path, encoding="utf-8").read()
+            self.query_one("#screenplay-textarea", TextArea).load_text(text)
+            self.app.current_file_path = ""  # type: ignore  — treat as unsaved new doc
+            self._flash("Loaded: Screenplay Template")
+            self.call_after_refresh(lambda: self.query_one(AppStatusBar).set_file("", saved=False))
+        except Exception as exc:
+            self._flash(f"Could not load template: {exc}", error=True)
 
     # ------------------------------------------------------------------
     # File operations
@@ -225,6 +264,21 @@ class MainScreen(Screen):
 
     def on_text_area_changed(self, event) -> None:  # type: ignore[override]
         self.query_one(AppStatusBar).is_saved = False
+
+    # ------------------------------------------------------------------
+    # Table of Contents
+    # ------------------------------------------------------------------
+
+    def on_app_editor_toc_updated(self, event: AppEditor.TocUpdated) -> None:
+        """Forward fresh scene list to the sidebar."""
+        self.query_one(AppSidebar).update_toc(event.scenes)
+
+    def on__toc_entry_selected(self, event: _TocEntry.Selected) -> None:
+        """Jump the editor cursor to the selected scene heading."""
+        from textual.widgets import TextArea
+        ta = self.query_one("#screenplay-textarea", TextArea)
+        ta.move_cursor((event.line_no, 0))
+        ta.focus()
 
     # ------------------------------------------------------------------
     # Keyboard action handlers (bound in app.py)

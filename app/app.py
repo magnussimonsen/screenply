@@ -29,5 +29,14 @@ class ScreenplyApp(App):
     # Live preview — rebuild HTML automatically while the user writes
     live_preview_enabled: reactive[bool] = reactive(False)
 
+    # Paper view — width of the editor column (in terminal columns)
+    paper_width: reactive[int] = reactive(72)
+
+    # Sidebar width (in terminal columns)
+    sidebar_width: reactive[int] = reactive(28)
+
+    # View mode — "paper" (fixed-width) or "web" (full-width)
+    view_mode: reactive[str] = reactive("paper")
+
     def on_mount(self) -> None:
         self.push_screen(MainScreen())

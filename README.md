@@ -2,6 +2,13 @@
 
 A terminal-based screenwriting app built with Python and [Textual](https://github.com/Textualize/textual).
 
+## Screenshots
+
+![Screenply screenshot 1](screenshots/screenply-1.png)
+![Screenply screenshot 2](screenshots/screenply-2.png)
+![Screenply screenshot 3](screenshots/screenply-3.png)
+![Screenply screenshot 4](screenshots/screenply-4.png)
+
 ## Tech
 
 - **Python 3.10+**
@@ -18,15 +25,18 @@ python main.py
 
 ## Current features
 
-- Menu bar with **File** and **View** dropdown menus (stubs)
-- Collapsible **sidebar** (Table of Contents placeholder)
-- **Status bar** with filename, save status, autosave indicator
-- **Theme picker** — click 🎨 in the status bar to choose from 20 built-in themes
+- Menu bar with **File**, **View**, and **Settings** dropdown menus
+- **File** menu: New, Open, Save, Save As, Export PDF/HTML, Load Big Fish example, Load Template, Quit
+- **View** menu: toggle between **Paper View** (fixed-width column) and **Web View** (full-width)
+- **Settings** menu: spell check on/off, language picker, add word to dictionary, live HTML preview, set paper width, set sidebar width
+- Collapsible **sidebar** with live **Table of Contents** — auto-generated from Fountain scene headings, clickable to jump to scene
+- **Status bar** with filename, save status, and autosave indicator
+- **Theme picker** — click 🎨 in the status bar to choose from built-in themes
+- **Spell checker** with red underline highlights and per-language user dictionaries
+- **Live HTML preview** — auto-rebuilds in the browser as you type
+- **Export** to PDF and HTML via screenplain
 
-## Planned
+## Fountain format
 
-- Screenplay editor with proper formatting (scene heading, action, dialogue, etc.)
-- New / open / save / save-as file operations
-- Table of Contents auto-generated from scene headings
-- Web view and paper view export/preview
-- Autosave
+Scene headings are detected automatically (`INT.`, `EXT.`, `INT./EXT.`, forced with `.`).
+The editor follows standard [Fountain](https://fountain.io) markup conventions.
