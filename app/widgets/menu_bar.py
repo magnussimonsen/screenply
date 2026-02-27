@@ -42,6 +42,7 @@ SETTINGS_ITEMS = [
     None,
     ("Select Language…",          "settings-language"),
     ("Add Word to Dictionary…",   "settings-add-word"),
+    ("Remove Word from Dictionary…", "settings-remove-word"),
     None,
     ("Turn On Live HTML Preview",  "settings-live-pdf-toggle"),
     None,

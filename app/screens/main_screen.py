@@ -111,6 +111,17 @@ class MainScreen(Screen):
             case "settings-add-word":
                 # Delegate to the editor — it uses the word at the cursor
                 self.query_one(AppEditor).action_add_word_to_dict()
+            case "settings-remove-word":
+                from app.state.user_dict import load_user_words, remove_user_word
+                from app.screens.remove_word_screen import RemoveWordScreen
+                lang: str = self.app.spell_language  # type: ignore
+                words = list(load_user_words(lang))
+                def _on_remove(word: str | None) -> None:
+                    if word:
+                        remove_user_word(lang, word)
+                        self.query_one(AppEditor)._run_spell_check()
+                        self._flash(f"Removed \u2018{word}\u2019 from dictionary")
+                self.app.push_screen(RemoveWordScreen(words), _on_remove)
             case "settings-live-pdf-toggle":
                 self.app.live_preview_enabled = not self.app.live_preview_enabled  # type: ignore
             case "settings-paper-width":
