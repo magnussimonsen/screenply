@@ -183,21 +183,27 @@ class MainScreen(Screen):
             self._flash(f"Could not load Big Fish: {exc}", error=True)
 
     def _load_template(self) -> None:
-        import os
-        from textual.widgets import TextArea
-        path = os.path.join(
-            os.path.dirname(__file__),
-            "..", "example_script", "template.fountain"
-        )
-        path = os.path.normpath(path)
-        try:
-            text = open(path, encoding="utf-8").read()
-            self.query_one("#screenplay-textarea", TextArea).load_text(text)
-            self.app.current_file_path = ""  # type: ignore  — treat as unsaved new doc
-            self._flash("Loaded: Screenplay Template")
-            self.call_after_refresh(lambda: self.query_one(AppStatusBar).set_file("", saved=False))
-        except Exception as exc:
-            self._flash(f"Could not load template: {exc}", error=True)
+        from app.screens.template_picker import TemplatePickerScreen
+
+        def _on_pick(filename: str | None) -> None:
+            if not filename:
+                return
+            import os
+            from textual.widgets import TextArea
+            path = os.path.normpath(os.path.join(
+                os.path.dirname(__file__),
+                "..", "example_script", filename,
+            ))
+            try:
+                text = open(path, encoding="utf-8").read()
+                self.query_one("#screenplay-textarea", TextArea).load_text(text)
+                self.app.current_file_path = ""  # type: ignore
+                self._flash(f"Loaded: {filename.replace('_', ' ').replace('.fountain', '').title()} Template")
+                self.call_after_refresh(lambda: self.query_one(AppStatusBar).set_file("", saved=False))
+            except Exception as exc:
+                self._flash(f"Could not load template: {exc}", error=True)
+
+        self.app.push_screen(TemplatePickerScreen(), _on_pick)
 
     # ------------------------------------------------------------------
     # File operations
